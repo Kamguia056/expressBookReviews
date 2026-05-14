@@ -2,7 +2,7 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 
 const authenticated = express.Router();
-
+const regd_users = express.Router();
 let users = [];
 
 // REGISTER
@@ -52,9 +52,7 @@ function isValid(username) {
 }
 
 module.exports = {
-    authenticated,
-    isValid,
-    users
+    authenticated
 };
 authenticated.put("/auth/review/:isbn", (req, res) => {
     const isbn = req.params.isbn;
@@ -92,6 +90,35 @@ authenticated.put("/auth/review/:isbn", (req, res) => {
 
     return res.json({
         message: "Review added/updated successfully",
+        reviews: books[isbn].reviews
+    });
+});
+
+authenticated.delete("/auth/review/:isbn", (req, res) => {
+    const isbn = req.params.isbn;
+
+    const token = req.session.authorization?.accessToken;
+
+    if (!token) {
+        return res.status(403).json({ message: "User not logged in" });
+    }
+
+    const username = jwt.verify(token, "fingerprint_customer").username;
+
+    let books = require("./booksdb.js");
+
+    if (!books[isbn]) {
+        return res.status(404).json({ message: "ISBN not found" });
+    }
+
+    if (!books[isbn].reviews || !books[isbn].reviews[username]) {
+        return res.status(400).json({ message: "Review not found" });
+    }
+
+    delete books[isbn].reviews[username];
+
+    return res.json({
+        message: "Review deleted successfully",
         reviews: books[isbn].reviews
     });
 });
